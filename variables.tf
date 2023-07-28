@@ -1,7 +1,7 @@
-variable "region" {
-  type        = string
-  description = "AWS region"
-}
+# variable "region" {
+#   type        = string
+#   description = "AWS region"
+# }
 
 variable "description" {
   type        = string
@@ -65,6 +65,7 @@ variable "dns_subdomain" {
 variable "vpc_id" {
   type        = string
   description = "ID of the VPC in which to provision the AWS resources"
+  default     = ""
 }
 
 variable "loadbalancer_subnets" {
@@ -76,6 +77,7 @@ variable "loadbalancer_subnets" {
 variable "application_subnets" {
   type        = list(string)
   description = "List of subnets to place EC2 instances"
+  default     = []
 }
 
 variable "availability_zone_selector" {
@@ -141,6 +143,7 @@ variable "autoscale_max" {
 variable "solution_stack_name" {
   type        = string
   description = "Elastic Beanstalk stack, e.g. Docker, Go, Node, Java, IIS. For more info, see https://docs.aws.amazon.com/elasticbeanstalk/latest/platforms/platforms-supported.html"
+  default     = ""
 }
 
 variable "wait_for_ready_timeout" {
@@ -603,4 +606,102 @@ variable "loadbalancer_redirect_http_to_https_status_code" {
     condition     = contains(["HTTP_301", "HTTP_302"], var.loadbalancer_redirect_http_to_https_status_code)
     error_message = "Allowed values are \"HTTP_301\" or \"HTTP_302\"."
   }
+}
+
+
+variable "settings" {
+  type = list(object({
+    namespace = string
+    name      = string
+    value     = string
+    resource  = string
+  }))
+  default     = []
+  description = "Define a list of all settings"
+}
+
+
+variable "create_service_role" {
+  type        = bool
+  default     = false
+  description = "Create a service role for Elastic Beanstalk to use"
+}
+
+variable "service_iam_policy_arns" {
+  type        = list(string)
+  default     = []
+  description = "List of IAM policy ARNs to attach to the service role"
+}
+
+
+variable "service_iam_role_name" {
+  type        = string
+  default     = ""
+  description = "Name of the service role to create"
+}
+
+variable "service_iam_role_description" {
+  type        = string
+  default     = ""
+  description = "Description of the service role to create"
+}
+
+variable "service_iam_role_assume_role_policy" {
+  type        = string
+  default     = ""
+  description = "IAM policy document describing the service role's trust relationship"
+}
+
+variable "service_iam_role_tags" {
+  type        = map(string)
+  default     = {}
+  description = "Tags to apply to the service role"
+}
+
+
+
+
+
+
+
+
+
+
+
+
+variable "create_ec2_role" {
+  type        = bool
+  default     = false
+  description = "Create a ec2 role for Elastic Beanstalk to use"
+}
+
+variable "ec2_iam_policy_arns" {
+  type        = list(string)
+  default     = []
+  description = "List of IAM policy ARNs to attach to the ec2 role"
+}
+
+
+variable "ec2_iam_role_name" {
+  type        = string
+  default     = ""
+  description = "Name of the ec2 role to create"
+}
+
+variable "ec2_iam_role_description" {
+  type        = string
+  default     = ""
+  description = "Description of the ec2 role to create"
+}
+
+variable "ec2_iam_role_assume_role_policy" {
+  type        = string
+  default     = ""
+  description = "IAM policy document describing the ec2 role's trust relationship"
+}
+
+variable "ec2_iam_role_tags" {
+  type        = map(string)
+  default     = {}
+  description = "Tags to apply to the ec2 role"
 }

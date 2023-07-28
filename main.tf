@@ -10,343 +10,113 @@ data "aws_partition" "current" {
 #
 # Service
 #
-data "aws_iam_policy_document" "service" {
-  count = local.enabled ? 1 : 0
+# data "aws_iam_policy_document" "service" {
+#   count = local.enabled ? 1 : 0
 
-  statement {
-    actions = [
-      "sts:AssumeRole"
-    ]
+#   statement {
+#     actions = [
+#       "sts:AssumeRole"
+#     ]
 
-    principals {
-      type        = "Service"
-      identifiers = ["elasticbeanstalk.amazonaws.com"]
-    }
+#     principals {
+#       type        = "Service"
+#       identifiers = ["elasticbeanstalk.amazonaws.com"]
+#     }
 
-    effect = "Allow"
-  }
-}
+#     effect = "Allow"
+#   }
+# }
 
 resource "aws_iam_role" "service" {
-  count = local.enabled ? 1 : 0
+  count = local.enabled && var.create_service_role ? 1 : 0
 
-  name               = "${module.this.id}-eb-service"
-  assume_role_policy = join("", data.aws_iam_policy_document.service[*].json)
-  tags               = module.this.tags
+  name               = var.service_iam_role_name
+  description        = var.service_iam_role_description
+  assume_role_policy = var.service_iam_role_assume_role_policy
+  tags               = var.service_iam_role_tags
 }
 
-resource "aws_iam_role_policy_attachment" "enhanced_health" {
-  count = local.enabled && var.enhanced_reporting_enabled ? 1 : 0
+# resource "aws_iam_role_policy_attachment" "enhanced_health" {
+#   count = local.enabled && var.enhanced_reporting_enabled ? 1 : 0
 
-  role       = join("", aws_iam_role.service[*].name)
-  policy_arn = "arn:${local.partition}:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth"
-}
+#   role       = join("", aws_iam_role.service[*].name)
+#   policy_arn = "arn:${local.partition}:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth"
+# }
+
+# resource "aws_iam_role_policy_attachment" "service" {
+#   count = local.enabled ? 1 : 0
+
+#   role       = join("", aws_iam_role.service[*].name)
+#   policy_arn = var.prefer_legacy_service_policy ? "arn:${local.partition}:iam::aws:policy/service-role/AWSElasticBeanstalkService" : "arn:${local.partition}:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy"
+# }
 
 resource "aws_iam_role_policy_attachment" "service" {
-  count = local.enabled ? 1 : 0
+  for_each = local.enabled && var.create_service_role ? toset(var.service_iam_policy_arns) : toset([])
 
-  role       = join("", aws_iam_role.service[*].name)
-  policy_arn = var.prefer_legacy_service_policy ? "arn:${local.partition}:iam::aws:policy/service-role/AWSElasticBeanstalkService" : "arn:${local.partition}:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy"
+
+  role       = aws_iam_role.service[0].name
+  policy_arn = each.key
 }
 
 #
 # EC2
 #
-data "aws_iam_policy_document" "ec2" {
-  count = local.enabled ? 1 : 0
+# data "aws_iam_policy_document" "ec2" {
+#   count = local.enabled ? 1 : 0
 
-  statement {
-    sid = ""
+#   statement {
+#     sid = ""
 
-    actions = [
-      "sts:AssumeRole",
-    ]
+#     actions = [
+#       "sts:AssumeRole",
+#     ]
 
-    principals {
-      type        = "Service"
-      identifiers = ["ec2.amazonaws.com"]
-    }
+#     principals {
+#       type        = "Service"
+#       identifiers = ["ec2.amazonaws.com"]
+#     }
 
-    effect = "Allow"
-  }
+#     effect = "Allow"
+#   }
 
-  statement {
-    sid = ""
+#   statement {
+#     sid = ""
 
-    actions = [
-      "sts:AssumeRole",
-    ]
+#     actions = [
+#       "sts:AssumeRole",
+#     ]
 
-    principals {
-      type        = "Service"
-      identifiers = ["ssm.amazonaws.com"]
-    }
+#     principals {
+#       type        = "Service"
+#       identifiers = ["ssm.amazonaws.com"]
+#     }
 
-    effect = "Allow"
-  }
-}
+#     effect = "Allow"
+#   }
+# }
 
-resource "aws_iam_role_policy_attachment" "elastic_beanstalk_multi_container_docker" {
-  count = local.enabled ? 1 : 0
+# resource "aws_iam_role_policy_attachment" "elastic_beanstalk_multi_container_docker" {
+#   count = local.enabled ? 1 : 0
 
-  role       = join("", aws_iam_role.ec2[*].name)
-  policy_arn = "arn:${local.partition}:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker"
-}
+#   role       = join("", aws_iam_role.ec2[*].name)
+#   policy_arn = "arn:${local.partition}:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker"
+# }
 
 resource "aws_iam_role" "ec2" {
-  count = local.enabled ? 1 : 0
+  count = local.enabled && var.create_ec2_role ? 1 : 0
 
-  name               = "${module.this.id}-eb-ec2"
-  assume_role_policy = join("", data.aws_iam_policy_document.ec2[*].json)
-  tags               = module.this.tags
+  name               = var.ec2_iam_role_name
+  description        = var.ec2_iam_role_description
+  assume_role_policy = var.ec2_iam_role_assume_role_policy
+  tags               = var.ec2_iam_role_tags
 }
 
-resource "aws_iam_role_policy" "default" {
-  count = local.enabled ? 1 : 0
+resource "aws_iam_role_policy_attachment" "role" {
+  for_each = local.enabled && var.create_ec2_role ? toset(var.ec2_iam_policy_arns) : toset([])
 
-  name   = "${module.this.id}-eb-default"
-  role   = join("", aws_iam_role.ec2[*].id)
-  policy = join("", data.aws_iam_policy_document.extended[*].json)
-}
 
-resource "aws_iam_role_policy_attachment" "web_tier" {
-  count = local.enabled ? 1 : 0
-
-  role       = join("", aws_iam_role.ec2[*].name)
-  policy_arn = "arn:${local.partition}:iam::aws:policy/AWSElasticBeanstalkWebTier"
-}
-
-resource "aws_iam_role_policy_attachment" "worker_tier" {
-  count = local.enabled ? 1 : 0
-
-  role       = join("", aws_iam_role.ec2[*].name)
-  policy_arn = "arn:${local.partition}:iam::aws:policy/AWSElasticBeanstalkWorkerTier"
-}
-
-resource "aws_iam_role_policy_attachment" "ssm_ec2" {
-  count = local.enabled ? 1 : 0
-
-  role       = join("", aws_iam_role.ec2[*].name)
-  policy_arn = var.prefer_legacy_ssm_policy ? "arn:${local.partition}:iam::aws:policy/service-role/AmazonEC2RoleforSSM" : "arn:${local.partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-resource "aws_iam_role_policy_attachment" "ssm_automation" {
-  count = local.enabled ? 1 : 0
-
-  role       = join("", aws_iam_role.ec2[*].name)
-  policy_arn = "arn:${local.partition}:iam::aws:policy/service-role/AmazonSSMAutomationRole"
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-# http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/create_deploy_docker.container.console.html
-# http://docs.aws.amazon.com/AmazonECR/latest/userguide/ecr_managed_policies.html#AmazonEC2ContainerRegistryReadOnly
-resource "aws_iam_role_policy_attachment" "ecr_readonly" {
-  count = local.enabled ? 1 : 0
-
-  role       = join("", aws_iam_role.ec2[*].name)
-  policy_arn = "arn:${local.partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-}
-
-resource "aws_ssm_activation" "ec2" {
-  count = local.enabled ? 1 : 0
-
-  name               = module.this.id
-  iam_role           = join("", aws_iam_role.ec2[*].id)
-  registration_limit = var.autoscale_max
-  tags               = module.this.tags
-  depends_on         = [aws_elastic_beanstalk_environment.default]
-}
-
-data "aws_iam_policy_document" "default" {
-  count = local.enabled ? 1 : 0
-
-  statement {
-    actions = [
-      "elasticloadbalancing:DescribeInstanceHealth",
-      "elasticloadbalancing:DescribeLoadBalancers",
-      "elasticloadbalancing:DescribeTargetHealth",
-      "ec2:DescribeInstances",
-      "ec2:DescribeInstanceStatus",
-      "ec2:GetConsoleOutput",
-      "ec2:AssociateAddress",
-      "ec2:DescribeAddresses",
-      "ec2:DescribeSecurityGroups",
-      "sqs:GetQueueAttributes",
-      "sqs:GetQueueUrl",
-      "autoscaling:DescribeAutoScalingGroups",
-      "autoscaling:DescribeAutoScalingInstances",
-      "autoscaling:DescribeScalingActivities",
-      "autoscaling:DescribeNotificationConfigurations",
-    ]
-
-    resources = ["*"]
-
-    effect = "Allow"
-  }
-
-  statement {
-    sid = "AllowOperations"
-
-    actions = [
-      "autoscaling:AttachInstances",
-      "autoscaling:CreateAutoScalingGroup",
-      "autoscaling:CreateLaunchConfiguration",
-      "autoscaling:DeleteLaunchConfiguration",
-      "autoscaling:DeleteAutoScalingGroup",
-      "autoscaling:DeleteScheduledAction",
-      "autoscaling:DescribeAccountLimits",
-      "autoscaling:DescribeAutoScalingGroups",
-      "autoscaling:DescribeAutoScalingInstances",
-      "autoscaling:DescribeLaunchConfigurations",
-      "autoscaling:DescribeLoadBalancers",
-      "autoscaling:DescribeNotificationConfigurations",
-      "autoscaling:DescribeScalingActivities",
-      "autoscaling:DescribeScheduledActions",
-      "autoscaling:DetachInstances",
-      "autoscaling:PutScheduledUpdateGroupAction",
-      "autoscaling:ResumeProcesses",
-      "autoscaling:SetDesiredCapacity",
-      "autoscaling:SetInstanceProtection",
-      "autoscaling:SuspendProcesses",
-      "autoscaling:TerminateInstanceInAutoScalingGroup",
-      "autoscaling:UpdateAutoScalingGroup",
-      "cloudwatch:PutMetricAlarm",
-      "ec2:AssociateAddress",
-      "ec2:AllocateAddress",
-      "ec2:AuthorizeSecurityGroupEgress",
-      "ec2:AuthorizeSecurityGroupIngress",
-      "ec2:CreateSecurityGroup",
-      "ec2:DeleteSecurityGroup",
-      "ec2:DescribeAccountAttributes",
-      "ec2:DescribeAddresses",
-      "ec2:DescribeImages",
-      "ec2:DescribeInstances",
-      "ec2:DescribeKeyPairs",
-      "ec2:DescribeSecurityGroups",
-      "ec2:DescribeSnapshots",
-      "ec2:DescribeSubnets",
-      "ec2:DescribeVpcs",
-      "ec2:DisassociateAddress",
-      "ec2:ReleaseAddress",
-      "ec2:RevokeSecurityGroupEgress",
-      "ec2:RevokeSecurityGroupIngress",
-      "ec2:TerminateInstances",
-      "ecs:CreateCluster",
-      "ecs:DeleteCluster",
-      "ecs:DescribeClusters",
-      "ecs:RegisterTaskDefinition",
-      "elasticbeanstalk:*",
-      "elasticloadbalancing:ApplySecurityGroupsToLoadBalancer",
-      "elasticloadbalancing:ConfigureHealthCheck",
-      "elasticloadbalancing:CreateLoadBalancer",
-      "elasticloadbalancing:DeleteLoadBalancer",
-      "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
-      "elasticloadbalancing:DescribeInstanceHealth",
-      "elasticloadbalancing:DescribeLoadBalancers",
-      "elasticloadbalancing:DescribeTargetHealth",
-      "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
-      "elasticloadbalancing:DescribeTargetGroups",
-      "elasticloadbalancing:RegisterTargets",
-      "elasticloadbalancing:DeregisterTargets",
-      "iam:ListRoles",
-      "logs:CreateLogGroup",
-      "logs:PutRetentionPolicy",
-      "rds:DescribeDBEngineVersions",
-      "rds:DescribeDBInstances",
-      "rds:DescribeOrderableDBInstanceOptions",
-      "s3:GetObject",
-      "s3:GetObjectAcl",
-      "s3:ListBucket",
-      "sns:CreateTopic",
-      "sns:GetTopicAttributes",
-      "sns:ListSubscriptionsByTopic",
-      "sns:Subscribe",
-      "sqs:GetQueueAttributes",
-      "sqs:GetQueueUrl",
-      "codebuild:CreateProject",
-      "codebuild:DeleteProject",
-      "codebuild:BatchGetBuilds",
-      "codebuild:StartBuild",
-    ]
-
-    resources = ["*"]
-
-    effect = "Allow"
-  }
-
-  statement {
-    sid = "AllowPassRole"
-
-    actions = [
-      "iam:PassRole"
-    ]
-
-    resources = [
-      join("", aws_iam_role.ec2[*].arn),
-      join("", aws_iam_role.service[*].arn)
-    ]
-
-    effect = "Allow"
-  }
-
-  statement {
-    sid = "AllowS3OperationsOnElasticBeanstalkBuckets"
-
-    actions = [
-      "s3:*"
-    ]
-
-    resources = [
-      #bridgecrew:skip=BC_AWS_IAM_57:Skipping "Ensure IAM policies does not allow write access without constraint"
-      #bridgecrew:skip=BC_AWS_IAM_56:Skipping "Ensure IAM policies do not allow permissions management / resource exposure without constraint"
-      #bridgecrew:skip=BC_AWS_IAM_55:Skipping "Ensure IAM policies do not allow data exfiltration"
-      "arn:${local.partition}:s3:::*"
-    ]
-
-    effect = "Allow"
-  }
-
-  statement {
-    sid = "AllowDeleteCloudwatchLogGroups"
-
-    actions = [
-      "logs:DeleteLogGroup"
-    ]
-
-    resources = [
-      "arn:${local.partition}:logs:*:*:log-group:/aws/elasticbeanstalk*"
-    ]
-
-    effect = "Allow"
-  }
-
-  statement {
-    sid = "AllowCloudformationOperationsOnElasticBeanstalkStacks"
-
-    actions = [
-      "cloudformation:*"
-    ]
-
-    resources = [
-      "arn:${local.partition}:cloudformation:*:*:stack/awseb-*",
-      "arn:${local.partition}:cloudformation:*:*:stack/eb-*"
-    ]
-
-    effect = "Allow"
-  }
-}
-
-data "aws_iam_policy_document" "extended" {
-  count                     = local.enabled ? 1 : 0
-  source_policy_documents   = [join("", data.aws_iam_policy_document.default[*].json)]
-  override_policy_documents = [var.extended_ec2_policy_document]
+  role       = aws_iam_role.ec2[0].name
+  policy_arn = each.key
 }
 
 resource "aws_iam_instance_profile" "ec2" {
@@ -356,6 +126,256 @@ resource "aws_iam_instance_profile" "ec2" {
   role = join("", aws_iam_role.ec2[*].name)
   tags = module.this.tags
 }
+
+# resource "aws_iam_role_policy" "default" {
+#   count = local.enabled ? 1 : 0
+
+#   name   = "${module.this.id}-eb-default"
+#   role   = join("", aws_iam_role.ec2[*].id)
+#   policy = join("", data.aws_iam_policy_document.extended[*].json)
+# }
+
+# resource "aws_iam_role_policy_attachment" "web_tier" {
+#   count = local.enabled ? 1 : 0
+
+#   role       = join("", aws_iam_role.ec2[*].name)
+#   policy_arn = "arn:${local.partition}:iam::aws:policy/AWSElasticBeanstalkWebTier"
+# }
+
+# resource "aws_iam_role_policy_attachment" "worker_tier" {
+#   count = local.enabled ? 1 : 0
+
+#   role       = join("", aws_iam_role.ec2[*].name)
+#   policy_arn = "arn:${local.partition}:iam::aws:policy/AWSElasticBeanstalkWorkerTier"
+# }
+
+# resource "aws_iam_role_policy_attachment" "ssm_ec2" {
+#   count = local.enabled ? 1 : 0
+
+#   role       = join("", aws_iam_role.ec2[*].name)
+#   policy_arn = var.prefer_legacy_ssm_policy ? "arn:${local.partition}:iam::aws:policy/service-role/AmazonEC2RoleforSSM" : "arn:${local.partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+
+#   lifecycle {
+#     create_before_destroy = true
+#   }
+# }
+
+# resource "aws_iam_role_policy_attachment" "ssm_automation" {
+#   count = local.enabled ? 1 : 0
+
+#   role       = join("", aws_iam_role.ec2[*].name)
+#   policy_arn = "arn:${local.partition}:iam::aws:policy/service-role/AmazonSSMAutomationRole"
+
+#   lifecycle {
+#     create_before_destroy = true
+#   }
+# }
+
+# # http://docs.aws.amazon.com/elasticbeanstalk/latest/dg/create_deploy_docker.container.console.html
+# # http://docs.aws.amazon.com/AmazonECR/latest/userguide/ecr_managed_policies.html#AmazonEC2ContainerRegistryReadOnly
+# resource "aws_iam_role_policy_attachment" "ecr_readonly" {
+#   count = local.enabled ? 1 : 0
+
+#   role       = join("", aws_iam_role.ec2[*].name)
+#   policy_arn = "arn:${local.partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+# }
+
+# resource "aws_ssm_activation" "ec2" {
+#   count = local.enabled ? 1 : 0
+
+#   name               = module.this.id
+#   iam_role           = join("", aws_iam_role.ec2[*].id)
+#   registration_limit = var.autoscale_max
+#   tags               = module.this.tags
+#   depends_on         = [aws_elastic_beanstalk_environment.default]
+# }
+
+# data "aws_iam_policy_document" "default" {
+#   count = local.enabled ? 1 : 0
+
+#   statement {
+#     actions = [
+#       "elasticloadbalancing:DescribeInstanceHealth",
+#       "elasticloadbalancing:DescribeLoadBalancers",
+#       "elasticloadbalancing:DescribeTargetHealth",
+#       "ec2:DescribeInstances",
+#       "ec2:DescribeInstanceStatus",
+#       "ec2:GetConsoleOutput",
+#       "ec2:AssociateAddress",
+#       "ec2:DescribeAddresses",
+#       "ec2:DescribeSecurityGroups",
+#       "sqs:GetQueueAttributes",
+#       "sqs:GetQueueUrl",
+#       "autoscaling:DescribeAutoScalingGroups",
+#       "autoscaling:DescribeAutoScalingInstances",
+#       "autoscaling:DescribeScalingActivities",
+#       "autoscaling:DescribeNotificationConfigurations",
+#     ]
+
+#     resources = ["*"]
+
+#     effect = "Allow"
+#   }
+
+#   statement {
+#     sid = "AllowOperations"
+
+#     actions = [
+#       "autoscaling:AttachInstances",
+#       "autoscaling:CreateAutoScalingGroup",
+#       "autoscaling:CreateLaunchConfiguration",
+#       "autoscaling:DeleteLaunchConfiguration",
+#       "autoscaling:DeleteAutoScalingGroup",
+#       "autoscaling:DeleteScheduledAction",
+#       "autoscaling:DescribeAccountLimits",
+#       "autoscaling:DescribeAutoScalingGroups",
+#       "autoscaling:DescribeAutoScalingInstances",
+#       "autoscaling:DescribeLaunchConfigurations",
+#       "autoscaling:DescribeLoadBalancers",
+#       "autoscaling:DescribeNotificationConfigurations",
+#       "autoscaling:DescribeScalingActivities",
+#       "autoscaling:DescribeScheduledActions",
+#       "autoscaling:DetachInstances",
+#       "autoscaling:PutScheduledUpdateGroupAction",
+#       "autoscaling:ResumeProcesses",
+#       "autoscaling:SetDesiredCapacity",
+#       "autoscaling:SetInstanceProtection",
+#       "autoscaling:SuspendProcesses",
+#       "autoscaling:TerminateInstanceInAutoScalingGroup",
+#       "autoscaling:UpdateAutoScalingGroup",
+#       "cloudwatch:PutMetricAlarm",
+#       "ec2:AssociateAddress",
+#       "ec2:AllocateAddress",
+#       "ec2:AuthorizeSecurityGroupEgress",
+#       "ec2:AuthorizeSecurityGroupIngress",
+#       "ec2:CreateSecurityGroup",
+#       "ec2:DeleteSecurityGroup",
+#       "ec2:DescribeAccountAttributes",
+#       "ec2:DescribeAddresses",
+#       "ec2:DescribeImages",
+#       "ec2:DescribeInstances",
+#       "ec2:DescribeKeyPairs",
+#       "ec2:DescribeSecurityGroups",
+#       "ec2:DescribeSnapshots",
+#       "ec2:DescribeSubnets",
+#       "ec2:DescribeVpcs",
+#       "ec2:DisassociateAddress",
+#       "ec2:ReleaseAddress",
+#       "ec2:RevokeSecurityGroupEgress",
+#       "ec2:RevokeSecurityGroupIngress",
+#       "ec2:TerminateInstances",
+#       "ecs:CreateCluster",
+#       "ecs:DeleteCluster",
+#       "ecs:DescribeClusters",
+#       "ecs:RegisterTaskDefinition",
+#       "elasticbeanstalk:*",
+#       "elasticloadbalancing:ApplySecurityGroupsToLoadBalancer",
+#       "elasticloadbalancing:ConfigureHealthCheck",
+#       "elasticloadbalancing:CreateLoadBalancer",
+#       "elasticloadbalancing:DeleteLoadBalancer",
+#       "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+#       "elasticloadbalancing:DescribeInstanceHealth",
+#       "elasticloadbalancing:DescribeLoadBalancers",
+#       "elasticloadbalancing:DescribeTargetHealth",
+#       "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+#       "elasticloadbalancing:DescribeTargetGroups",
+#       "elasticloadbalancing:RegisterTargets",
+#       "elasticloadbalancing:DeregisterTargets",
+#       "iam:ListRoles",
+#       "logs:CreateLogGroup",
+#       "logs:PutRetentionPolicy",
+#       "rds:DescribeDBEngineVersions",
+#       "rds:DescribeDBInstances",
+#       "rds:DescribeOrderableDBInstanceOptions",
+#       "s3:GetObject",
+#       "s3:GetObjectAcl",
+#       "s3:ListBucket",
+#       "sns:CreateTopic",
+#       "sns:GetTopicAttributes",
+#       "sns:ListSubscriptionsByTopic",
+#       "sns:Subscribe",
+#       "sqs:GetQueueAttributes",
+#       "sqs:GetQueueUrl",
+#       "codebuild:CreateProject",
+#       "codebuild:DeleteProject",
+#       "codebuild:BatchGetBuilds",
+#       "codebuild:StartBuild",
+#     ]
+
+#     resources = ["*"]
+
+#     effect = "Allow"
+#   }
+
+#   statement {
+#     sid = "AllowPassRole"
+
+#     actions = [
+#       "iam:PassRole"
+#     ]
+
+#     resources = [
+#       join("", aws_iam_role.ec2[*].arn),
+#       join("", aws_iam_role.service[*].arn)
+#     ]
+
+#     effect = "Allow"
+#   }
+
+#   statement {
+#     sid = "AllowS3OperationsOnElasticBeanstalkBuckets"
+
+#     actions = [
+#       "s3:*"
+#     ]
+
+#     resources = [
+#       #bridgecrew:skip=BC_AWS_IAM_57:Skipping "Ensure IAM policies does not allow write access without constraint"
+#       #bridgecrew:skip=BC_AWS_IAM_56:Skipping "Ensure IAM policies do not allow permissions management / resource exposure without constraint"
+#       #bridgecrew:skip=BC_AWS_IAM_55:Skipping "Ensure IAM policies do not allow data exfiltration"
+#       "arn:${local.partition}:s3:::*"
+#     ]
+
+#     effect = "Allow"
+#   }
+
+#   statement {
+#     sid = "AllowDeleteCloudwatchLogGroups"
+
+#     actions = [
+#       "logs:DeleteLogGroup"
+#     ]
+
+#     resources = [
+#       "arn:${local.partition}:logs:*:*:log-group:/aws/elasticbeanstalk*"
+#     ]
+
+#     effect = "Allow"
+#   }
+
+#   statement {
+#     sid = "AllowCloudformationOperationsOnElasticBeanstalkStacks"
+
+#     actions = [
+#       "cloudformation:*"
+#     ]
+
+#     resources = [
+#       "arn:${local.partition}:cloudformation:*:*:stack/awseb-*",
+#       "arn:${local.partition}:cloudformation:*:*:stack/eb-*"
+#     ]
+
+#     effect = "Allow"
+#   }
+# }
+
+# data "aws_iam_policy_document" "extended" {
+#   count                     = local.enabled ? 1 : 0
+#   source_policy_documents   = [join("", data.aws_iam_policy_document.default[*].json)]
+#   override_policy_documents = [var.extended_ec2_policy_document]
+# }
+
+
 
 locals {
   # Remove `Name` tag from the map of tags because Elastic Beanstalk generates the `Name` tag automatically
@@ -611,486 +631,14 @@ resource "aws_elastic_beanstalk_environment" "default" {
   tags                   = local.tags
 
   dynamic "setting" {
-    for_each = local.elb_settings_final
+    for_each = var.settings
     content {
-      namespace = setting.value["namespace"]
       name      = setting.value["name"]
+      namespace = setting.value["namespace"]
+      resource  = ""
       value     = setting.value["value"]
-      resource  = ""
     }
   }
-
-  setting {
-    namespace = "aws:ec2:vpc"
-    name      = "VPCId"
-    value     = var.vpc_id
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:ec2:vpc"
-    name      = "AssociatePublicIpAddress"
-    value     = var.associate_public_ip_address
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:ec2:vpc"
-    name      = "Subnets"
-    value     = join(",", sort(var.application_subnets))
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:launchconfiguration"
-    name      = "SecurityGroups"
-    value     = join(",", sort(compact(concat([module.aws_security_group.id], var.associated_security_group_ids))))
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:launchconfiguration"
-    name      = "IamInstanceProfile"
-    value     = join("", aws_iam_instance_profile.ec2[*].name)
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:asg"
-    name      = "Availability Zones"
-    value     = var.availability_zone_selector
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:environment"
-    name      = "EnvironmentType"
-    value     = var.environment_type
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:environment"
-    name      = "ServiceRole"
-    value     = join("", aws_iam_role.service[*].name)
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:application:environment"
-    name      = "BASE_HOST"
-    value     = module.this.name
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:healthreporting:system"
-    name      = "SystemType"
-    value     = var.enhanced_reporting_enabled ? "enhanced" : "basic"
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:managedactions"
-    name      = "ManagedActionsEnabled"
-    value     = var.managed_actions_enabled ? "true" : "false"
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:asg"
-    name      = "MinSize"
-    value     = var.autoscale_min
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:asg"
-    name      = "MaxSize"
-    value     = var.autoscale_max
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:asg"
-    name      = "EnableCapacityRebalancing"
-    value     = var.enable_capacity_rebalancing
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:updatepolicy:rollingupdate"
-    name      = "RollingUpdateEnabled"
-    value     = var.rolling_update_enabled
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:updatepolicy:rollingupdate"
-    name      = "RollingUpdateType"
-    value     = var.rolling_update_type
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:updatepolicy:rollingupdate"
-    name      = "MinInstancesInService"
-    value     = var.updating_min_in_service
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:command"
-    name      = "DeploymentPolicy"
-    value     = var.deployment_policy
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:updatepolicy:rollingupdate"
-    name      = "MaxBatchSize"
-    value     = var.updating_max_batch
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:ec2:instances"
-    name      = "InstanceTypes"
-    value     = var.instance_type
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:ec2:instances"
-    name      = "EnableSpot"
-    value     = var.enable_spot_instances ? "true" : "false"
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:ec2:instances"
-    name      = "SpotFleetOnDemandBase"
-    value     = var.spot_fleet_on_demand_base
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:ec2:instances"
-    name      = "SpotFleetOnDemandAboveBasePercentage"
-    value     = var.spot_fleet_on_demand_above_base_percentage == -1 ? (var.environment_type == "LoadBalanced" ? 70 : 0) : var.spot_fleet_on_demand_above_base_percentage
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:ec2:instances"
-    name      = "SpotMaxPrice"
-    value     = var.spot_max_price == -1 ? "" : var.spot_max_price
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:launchconfiguration"
-    name      = "EC2KeyName"
-    value     = var.keypair
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:launchconfiguration"
-    name      = "RootVolumeSize"
-    value     = var.root_volume_size
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:launchconfiguration"
-    name      = "RootVolumeType"
-    value     = var.root_volume_type
-    resource  = ""
-  }
-
-  dynamic "setting" {
-    for_each = var.root_volume_throughput == null ? [] : [var.root_volume_throughput]
-    content {
-      namespace = "aws:autoscaling:launchconfiguration"
-      name      = "RootVolumeThroughput"
-      value     = setting.value
-      resource  = ""
-    }
-  }
-
-  dynamic "setting" {
-    for_each = var.root_volume_iops == null ? [] : [var.root_volume_iops]
-    content {
-      namespace = "aws:autoscaling:launchconfiguration"
-      name      = "RootVolumeIOPS"
-      value     = setting.value
-      resource  = ""
-    }
-  }
-
-  dynamic "setting" {
-    for_each = var.ami_id == null ? [] : [var.ami_id]
-    content {
-      namespace = "aws:autoscaling:launchconfiguration"
-      name      = "ImageId"
-      value     = setting.value
-      resource  = ""
-    }
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:command"
-    name      = "BatchSizeType"
-    value     = var.deployment_batch_size_type
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:command"
-    name      = "BatchSize"
-    value     = var.deployment_batch_size
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:command"
-    name      = "IgnoreHealthCheck"
-    value     = var.deployment_ignore_health_check
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:command"
-    name      = "Timeout"
-    value     = var.deployment_timeout
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:managedactions"
-    name      = "PreferredStartTime"
-    value     = var.preferred_start_time
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:managedactions:platformupdate"
-    name      = "UpdateLevel"
-    value     = var.update_level
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:managedactions:platformupdate"
-    name      = "InstanceRefreshEnabled"
-    value     = var.instance_refresh_enabled
-    resource  = ""
-  }
-
-  ###=========================== Autoscale trigger ========================== ###
-
-  setting {
-    namespace = "aws:autoscaling:trigger"
-    name      = "MeasureName"
-    value     = var.autoscale_measure_name
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:trigger"
-    name      = "Statistic"
-    value     = var.autoscale_statistic
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:trigger"
-    name      = "Unit"
-    value     = var.autoscale_unit
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:trigger"
-    name      = "LowerThreshold"
-    value     = var.autoscale_lower_bound
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:trigger"
-    name      = "LowerBreachScaleIncrement"
-    value     = var.autoscale_lower_increment
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:trigger"
-    name      = "UpperThreshold"
-    value     = var.autoscale_upper_bound
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:autoscaling:trigger"
-    name      = "UpperBreachScaleIncrement"
-    value     = var.autoscale_upper_increment
-    resource  = ""
-  }
-
-  ###=========================== Scheduled Actions ========================== ###
-
-  dynamic "setting" {
-    for_each = var.scheduled_actions
-    content {
-      namespace = "aws:autoscaling:scheduledaction"
-      name      = "MinSize"
-      value     = setting.value.minsize
-      resource  = setting.value.name
-    }
-  }
-  dynamic "setting" {
-    for_each = var.scheduled_actions
-    content {
-      namespace = "aws:autoscaling:scheduledaction"
-      name      = "MaxSize"
-      value     = setting.value.maxsize
-      resource  = setting.value.name
-    }
-  }
-  dynamic "setting" {
-    for_each = var.scheduled_actions
-    content {
-      namespace = "aws:autoscaling:scheduledaction"
-      name      = "DesiredCapacity"
-      value     = setting.value.desiredcapacity
-      resource  = setting.value.name
-    }
-  }
-  dynamic "setting" {
-    for_each = var.scheduled_actions
-    content {
-      namespace = "aws:autoscaling:scheduledaction"
-      name      = "Recurrence"
-      value     = setting.value.recurrence
-      resource  = setting.value.name
-    }
-  }
-  dynamic "setting" {
-    for_each = var.scheduled_actions
-    content {
-      namespace = "aws:autoscaling:scheduledaction"
-      name      = "StartTime"
-      value     = setting.value.starttime
-      resource  = setting.value.name
-    }
-  }
-  dynamic "setting" {
-    for_each = var.scheduled_actions
-    content {
-      namespace = "aws:autoscaling:scheduledaction"
-      name      = "EndTime"
-      value     = setting.value.endtime
-      resource  = setting.value.name
-    }
-  }
-  dynamic "setting" {
-    for_each = var.scheduled_actions
-    content {
-      namespace = "aws:autoscaling:scheduledaction"
-      name      = "Suspend"
-      value     = setting.value.suspend ? "true" : "false"
-      resource  = setting.value.name
-    }
-  }
-
-
-  ###=========================== Logging ========================== ###
-
-  setting {
-    namespace = "aws:elasticbeanstalk:hostmanager"
-    name      = "LogPublicationControl"
-    value     = var.enable_log_publication_control ? "true" : "false"
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:cloudwatch:logs"
-    name      = "StreamLogs"
-    value     = var.enable_stream_logs ? "true" : "false"
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:cloudwatch:logs"
-    name      = "DeleteOnTerminate"
-    value     = var.logs_delete_on_terminate ? "true" : "false"
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:cloudwatch:logs"
-    name      = "RetentionInDays"
-    value     = var.logs_retention_in_days
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:cloudwatch:logs:health"
-    name      = "HealthStreamingEnabled"
-    value     = var.health_streaming_enabled ? "true" : "false"
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:cloudwatch:logs:health"
-    name      = "DeleteOnTerminate"
-    value     = var.health_streaming_delete_on_terminate ? "true" : "false"
-    resource  = ""
-  }
-
-  setting {
-    namespace = "aws:elasticbeanstalk:cloudwatch:logs:health"
-    name      = "RetentionInDays"
-    value     = var.health_streaming_retention_in_days
-    resource  = ""
-  }
-
-  # Add additional Elastic Beanstalk settings
-  # For full list of options, see https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/command-options-general.html
-  dynamic "setting" {
-    for_each = var.additional_settings
-    content {
-      namespace = setting.value.namespace
-      name      = setting.value.name
-      value     = setting.value.value
-      resource  = ""
-    }
-  }
-
-  # dynamic needed as "spot max price" should only have a value if it is defined.
-  dynamic "setting" {
-    for_each = var.spot_max_price == -1 ? [] : [var.spot_max_price]
-    content {
-      namespace = "aws:ec2:instances"
-      name      = "SpotMaxPrice"
-      value     = var.spot_max_price
-      resource  = ""
-    }
-  }
-
-  # Add environment variables if provided
-  dynamic "setting" {
-    for_each = var.env_vars
-    content {
-      namespace = "aws:elasticbeanstalk:application:environment"
-      name      = setting.key
-      value     = setting.value
-      resource  = ""
-    }
-  }
-
 }
 
 resource "random_string" "elb_logs_suffix" {

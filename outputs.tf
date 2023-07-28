@@ -28,10 +28,10 @@ output "security_group_name" {
   description = "Elastic Beanstalk environment Security Group name"
 }
 
-output "elb_zone_id" {
-  value       = var.alb_zone_id[var.region]
-  description = "ELB zone ID"
-}
+# output "elb_zone_id" {
+#   value       = var.alb_zone_id[var.region]
+#   description = "ELB zone ID"
+# }
 
 output "ec2_instance_profile_role_name" {
   value       = join("", aws_iam_role.ec2[*].name)
