@@ -1,7 +1,7 @@
-output "hostname" {
-  value       = module.dns_hostname.hostname
-  description = "DNS hostname"
-}
+# output "hostname" {
+#   value       = module.dns_hostname.hostname
+#   description = "DNS hostname"
+# }
 
 output "id" {
   value       = join("", aws_elastic_beanstalk_environment.default[*].id)
@@ -14,17 +14,17 @@ output "name" {
 }
 
 output "security_group_id" {
-  value       = module.aws_security_group.id
+  value       = aws_security_group.default[*].id
   description = "Elastic Beanstalk environment Security Group ID"
 }
 
 output "security_group_arn" {
-  value       = module.aws_security_group.arn
+  value       = aws_security_group.default[*].arn
   description = "Elastic Beanstalk environment Security Group ARN"
 }
 
 output "security_group_name" {
-  value       = module.aws_security_group.name
+  value       = aws_security_group.default[*].name
   description = "Elastic Beanstalk environment Security Group name"
 }
 
@@ -83,10 +83,10 @@ output "load_balancers" {
   description = "Elastic Load Balancers in use by this environment"
 }
 
-output "load_balancer_log_bucket" {
-  value       = var.enable_loadbalancer_logs ? "${module.this.id}-eb-loadbalancer-logs-${random_string.elb_logs_suffix.result}" : null
-  description = "Name of bucket where Load Balancer logs are stored (if enabled)"
-}
+# output "load_balancer_log_bucket" {
+#   value       = var.enable_loadbalancer_logs ? "${module.this.id}-eb-loadbalancer-logs-${random_string.elb_logs_suffix.result}" : null
+#   description = "Name of bucket where Load Balancer logs are stored (if enabled)"
+# }
 
 output "queues" {
   value       = try(aws_elastic_beanstalk_environment.default[*].queues, [])

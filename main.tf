@@ -111,7 +111,7 @@ resource "aws_iam_role" "ec2" {
   tags               = var.ec2_iam_role_tags
 }
 
-resource "aws_iam_role_policy_attachment" "role" {
+resource "aws_iam_role_policy_attachment" "ec2" {
   for_each = local.enabled && var.create_ec2_role ? toset(var.ec2_iam_policy_arns) : toset([])
 
 
@@ -120,11 +120,11 @@ resource "aws_iam_role_policy_attachment" "role" {
 }
 
 resource "aws_iam_instance_profile" "ec2" {
-  count = local.enabled ? 1 : 0
+  count = local.enabled && var.create_instance_profile ? 1 : 0
 
-  name = "${module.this.id}-eb-ec2"
+  name = var.instance_profile_name
   role = join("", aws_iam_role.ec2[*].name)
-  tags = module.this.tags
+  tags = var.instance_profile_tags
 }
 
 # resource "aws_iam_role_policy" "default" {
@@ -536,17 +536,17 @@ locals {
     }
   ]
 
-  alb_settings_logging = !var.loadbalancer_is_shared && var.enable_loadbalancer_logs ? [
-    {
-      namespace = "aws:elbv2:loadbalancer"
-      name      = "AccessLogsS3Enabled"
-      value     = "true"
-    },
-    {
-      namespace = "aws:elbv2:loadbalancer"
-      name      = "AccessLogsS3Bucket"
-      value     = module.elb_logs.bucket_id
-  }] : []
+  # alb_settings_logging = !var.loadbalancer_is_shared && var.enable_loadbalancer_logs ? [
+  #   {
+  #     namespace = "aws:elbv2:loadbalancer"
+  #     name      = "AccessLogsS3Enabled"
+  #     value     = "true"
+  #   },
+  #   {
+  #     namespace = "aws:elbv2:loadbalancer"
+  #     name      = "AccessLogsS3Bucket"
+  #     value     = module.elb_logs.bucket_id
+  # }] : []
 
   nlb_settings = [
     {
@@ -605,8 +605,9 @@ locals {
   ]
 
   # Select elb configuration depending on loadbalancer_type
-  elb_settings_nlb        = var.loadbalancer_type == "network" ? concat(local.nlb_settings, local.generic_elb_settings, local.beanstalk_elb_settings) : []
-  elb_settings_alb        = var.loadbalancer_type == "application" && !var.loadbalancer_is_shared ? concat(local.alb_settings, local.generic_alb_settings, local.generic_elb_settings, local.beanstalk_elb_settings, local.alb_settings_logging) : []
+  elb_settings_nlb = var.loadbalancer_type == "network" ? concat(local.nlb_settings, local.generic_elb_settings, local.beanstalk_elb_settings) : []
+  # elb_settings_alb        = var.loadbalancer_type == "application" && !var.loadbalancer_is_shared ? concat(local.alb_settings, local.generic_alb_settings, local.generic_elb_settings, local.beanstalk_elb_settings, local.alb_settings_logging) : []
+  elb_settings_alb        = var.loadbalancer_type == "application" && !var.loadbalancer_is_shared ? concat(local.alb_settings, local.generic_alb_settings, local.generic_elb_settings, local.beanstalk_elb_settings) : []
   elb_settings_shared_alb = var.loadbalancer_type == "application" && var.loadbalancer_is_shared ? concat(local.shared_alb_settings, local.generic_alb_settings, local.generic_elb_settings) : []
   elb_setting_classic     = var.loadbalancer_type == "classic" ? concat(local.classic_elb_settings, local.generic_elb_settings, local.beanstalk_elb_settings) : []
 
@@ -641,34 +642,34 @@ resource "aws_elastic_beanstalk_environment" "default" {
   }
 }
 
-resource "random_string" "elb_logs_suffix" {
-  length  = 5
-  special = false
-  upper   = false
-}
+# resource "random_string" "elb_logs_suffix" {
+#   length  = 5
+#   special = false
+#   upper   = false
+# }
 
-module "elb_logs" {
-  source             = "cloudposse/lb-s3-bucket/aws"
-  version            = "0.19.0"
-  enabled            = var.enable_loadbalancer_logs && local.enabled && var.tier == "WebServer" && var.environment_type == "LoadBalanced" && var.loadbalancer_type != "network" && !var.loadbalancer_is_shared ? true : false
-  name               = "${module.this.id}-alb-logs-${random_string.elb_logs_suffix.result}"
-  force_destroy      = var.force_destroy
-  versioning_enabled = var.s3_bucket_versioning_enabled
-  context            = module.this.context
-}
+# module "elb_logs" {
+#   source             = "cloudposse/lb-s3-bucket/aws"
+#   version            = "0.19.0"
+#   enabled            = var.enable_loadbalancer_logs && local.enabled && var.tier == "WebServer" && var.environment_type == "LoadBalanced" && var.loadbalancer_type != "network" && !var.loadbalancer_is_shared ? true : false
+#   name               = "${module.this.id}-alb-logs-${random_string.elb_logs_suffix.result}"
+#   force_destroy      = var.force_destroy
+#   versioning_enabled = var.s3_bucket_versioning_enabled
+#   context            = module.this.context
+# }
 
-module "dns_hostname" {
-  source  = "cloudposse/route53-cluster-hostname/aws"
-  version = "0.12.2"
+# module "dns_hostname" {
+#   source  = "cloudposse/route53-cluster-hostname/aws"
+#   version = "0.12.2"
 
-  enabled = local.enabled && var.dns_zone_id != "" && var.tier == "WebServer" ? true : false
+#   enabled = local.enabled && var.dns_zone_id != "" && var.tier == "WebServer" ? true : false
 
-  dns_name = var.dns_subdomain != "" ? var.dns_subdomain : module.this.name
-  zone_id  = var.dns_zone_id
-  records  = [join("", aws_elastic_beanstalk_environment.default[*].cname)]
+#   dns_name = var.dns_subdomain != "" ? var.dns_subdomain : module.this.name
+#   zone_id  = var.dns_zone_id
+#   records  = [join("", aws_elastic_beanstalk_environment.default[*].cname)]
 
-  context = module.this.context
-}
+#   context = module.this.context
+# }
 
 data "aws_lb_listener" "http" {
   count             = local.enabled && var.loadbalancer_redirect_http_to_https ? 1 : 0

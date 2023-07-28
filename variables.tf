@@ -658,17 +658,6 @@ variable "service_iam_role_tags" {
   description = "Tags to apply to the service role"
 }
 
-
-
-
-
-
-
-
-
-
-
-
 variable "create_ec2_role" {
   type        = bool
   default     = false
@@ -705,3 +694,22 @@ variable "ec2_iam_role_tags" {
   default     = {}
   description = "Tags to apply to the ec2 role"
 }
+
+variable "create_instance_profile" {
+  type        = bool
+  default     = false
+  description = "Create a instance profile for Elastic Beanstalk to use"
+}
+
+variable "instance_profile_name" {
+  type        = string
+  default     = ""
+  description = "Name of the instance profile to create"
+}
+
+variable "instance_profile_tags" {
+  type        = map(string)
+  default     = {}
+  description = "Tags to apply to the instance profile"
+}
+

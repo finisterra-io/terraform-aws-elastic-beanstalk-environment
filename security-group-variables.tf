@@ -1,11 +1,11 @@
 # security-group-inputs Version: 2
 #
 
-variable "create_security_group" {
-  type        = bool
-  default     = true
-  description = "Set `true` to create and configure a Security Group for the cluster."
-}
+# variable "create_security_group" {
+#   type        = bool
+#   default     = true
+#   description = "Set `true` to create and configure a Security Group for the cluster."
+# }
 
 variable "associated_security_group_ids" {
   type        = list(string)
@@ -16,14 +16,48 @@ variable "associated_security_group_ids" {
     EOT
 }
 
+
+variable "security_group_tags" {
+  type        = map(string)
+  description = "Additional tags for the security group to create for the DocumentDB cluster"
+  default     = {}
+}
+
+variable "security_group_rules" {
+  description = "Map of security group rules"
+  type = map(object({
+    cidr_blocks            = list(string)
+    id                     = string
+    protocol               = string
+    security_group_id      = string
+    security_group_rule_id = string
+    type                   = string
+    description            = optional(string)
+    from_port              = optional(number)
+    to_port                = optional(number)
+  }))
+}
+
+variable "create_security_group" {
+  type        = bool
+  default     = false
+  description = "Create a security group for the DocumentDB cluster"
+}
+
+# variable "security_group_name" {
+#   type        = list(string)
+#   default     = []
+#   description = <<-EOT
+#     The name to assign to the created security group. Must be unique within the VPC.
+#     If not provided, will be derived from the `null-label.context` passed in.
+#     If `create_before_destroy` is true, will be used as a name prefix.
+#     EOT
+# }
+
 variable "security_group_name" {
-  type        = list(string)
-  default     = []
-  description = <<-EOT
-    The name to assign to the created security group. Must be unique within the VPC.
-    If not provided, will be derived from the `null-label.context` passed in.
-    If `create_before_destroy` is true, will be used as a name prefix.
-    EOT
+  type        = string
+  default     = ""
+  description = "The name to assign to the created security group. Must be unique within the VPC."
 }
 
 variable "security_group_description" {
@@ -71,15 +105,15 @@ variable "allow_all_egress" {
     EOT
 }
 
-variable "additional_security_group_rules" {
-  type        = list(any)
-  default     = []
-  description = <<-EOT
-    A list of Security Group rule objects to add to the created security group, in addition to the ones
-    this module normally creates. (To suppress the module's rules, set `create_security_group` to false
-    and supply your own security group via `associated_security_group_ids`.)
-    The keys and values of the objects are fully compatible with the `aws_security_group_rule` resource, except
-    for `security_group_id` which will be ignored, and the optional "key" which, if provided, must be unique and known at "plan" time.
-    To get more info see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group_rule .
-    EOT
-}
+# variable "additional_security_group_rules" {
+#   type        = list(any)
+#   default     = []
+#   description = <<-EOT
+#     A list of Security Group rule objects to add to the created security group, in addition to the ones
+#     this module normally creates. (To suppress the module's rules, set `create_security_group` to false
+#     and supply your own security group via `associated_security_group_ids`.)
+#     The keys and values of the objects are fully compatible with the `aws_security_group_rule` resource, except
+#     for `security_group_id` which will be ignored, and the optional "key" which, if provided, must be unique and known at "plan" time.
+#     To get more info see https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group_rule .
+#     EOT
+# }
