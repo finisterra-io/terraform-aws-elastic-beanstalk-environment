@@ -27,14 +27,14 @@ data "aws_partition" "current" {
 #   }
 # }
 
-resource "aws_iam_role" "service" {
-  count = local.enabled && var.create_service_role ? 1 : 0
+# resource "aws_iam_role" "service" {
+#   count = local.enabled && var.create_service_role ? 1 : 0
 
-  name               = var.service_iam_role_name
-  description        = var.service_iam_role_description
-  assume_role_policy = var.service_iam_role_assume_role_policy
-  tags               = var.service_iam_role_tags
-}
+#   name               = var.service_iam_role_name
+#   description        = var.service_iam_role_description
+#   assume_role_policy = var.service_iam_role_assume_role_policy
+#   tags               = var.service_iam_role_tags
+# }
 
 # resource "aws_iam_role_policy_attachment" "enhanced_health" {
 #   count = local.enabled && var.enhanced_reporting_enabled ? 1 : 0
@@ -50,13 +50,13 @@ resource "aws_iam_role" "service" {
 #   policy_arn = var.prefer_legacy_service_policy ? "arn:${local.partition}:iam::aws:policy/service-role/AWSElasticBeanstalkService" : "arn:${local.partition}:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy"
 # }
 
-resource "aws_iam_role_policy_attachment" "service" {
-  for_each = local.enabled && var.create_service_role ? toset(var.service_iam_policy_arns) : toset([])
+# resource "aws_iam_role_policy_attachment" "service" {
+#   for_each = local.enabled && var.create_service_role ? toset(var.service_iam_policy_arns) : toset([])
 
 
-  role       = aws_iam_role.service[0].name
-  policy_arn = each.key
-}
+#   role       = aws_iam_role.service[0].name
+#   policy_arn = each.key
+# }
 
 #
 # EC2
@@ -102,30 +102,30 @@ resource "aws_iam_role_policy_attachment" "service" {
 #   policy_arn = "arn:${local.partition}:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker"
 # }
 
-resource "aws_iam_role" "ec2" {
-  count = local.enabled && var.create_ec2_role ? 1 : 0
+# resource "aws_iam_role" "ec2" {
+#   count = local.enabled && var.create_ec2_role ? 1 : 0
 
-  name               = var.ec2_iam_role_name
-  description        = var.ec2_iam_role_description
-  assume_role_policy = var.ec2_iam_role_assume_role_policy
-  tags               = var.ec2_iam_role_tags
-}
+#   name               = var.ec2_iam_role_name
+#   description        = var.ec2_iam_role_description
+#   assume_role_policy = var.ec2_iam_role_assume_role_policy
+#   tags               = var.ec2_iam_role_tags
+# }
 
-resource "aws_iam_role_policy_attachment" "ec2" {
-  for_each = local.enabled && var.create_ec2_role ? toset(var.ec2_iam_policy_arns) : toset([])
+# resource "aws_iam_role_policy_attachment" "ec2" {
+#   for_each = local.enabled && var.create_ec2_role ? toset(var.ec2_iam_policy_arns) : toset([])
 
 
-  role       = aws_iam_role.ec2[0].name
-  policy_arn = each.key
-}
+#   role       = aws_iam_role.ec2[0].name
+#   policy_arn = each.key
+# }
 
-resource "aws_iam_instance_profile" "ec2" {
-  count = local.enabled && var.create_instance_profile ? 1 : 0
+# resource "aws_iam_instance_profile" "ec2" {
+#   count = local.enabled && var.create_instance_profile ? 1 : 0
 
-  name = var.instance_profile_name
-  role = join("", aws_iam_role.ec2[*].name)
-  tags = var.instance_profile_tags
-}
+#   name = var.instance_profile_name
+#   role = join("", aws_iam_role.ec2[*].name)
+#   tags = var.instance_profile_tags
+# }
 
 # resource "aws_iam_role_policy" "default" {
 #   count = local.enabled ? 1 : 0

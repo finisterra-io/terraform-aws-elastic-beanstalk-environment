@@ -13,30 +13,30 @@ output "name" {
   description = "Name of the Elastic Beanstalk environment"
 }
 
-output "security_group_id" {
-  value       = aws_security_group.default[*].id
-  description = "Elastic Beanstalk environment Security Group ID"
-}
+# output "security_group_id" {
+#   value       = aws_security_group.default[*].id
+#   description = "Elastic Beanstalk environment Security Group ID"
+# }
 
-output "security_group_arn" {
-  value       = aws_security_group.default[*].arn
-  description = "Elastic Beanstalk environment Security Group ARN"
-}
+# output "security_group_arn" {
+#   value       = aws_security_group.default[*].arn
+#   description = "Elastic Beanstalk environment Security Group ARN"
+# }
 
-output "security_group_name" {
-  value       = aws_security_group.default[*].name
-  description = "Elastic Beanstalk environment Security Group name"
-}
+# output "security_group_name" {
+#   value       = aws_security_group.default[*].name
+#   description = "Elastic Beanstalk environment Security Group name"
+# }
 
 # output "elb_zone_id" {
 #   value       = var.alb_zone_id[var.region]
 #   description = "ELB zone ID"
 # }
 
-output "ec2_instance_profile_role_name" {
-  value       = join("", aws_iam_role.ec2[*].name)
-  description = "Instance IAM role name"
-}
+# output "ec2_instance_profile_role_name" {
+#   value       = join("", aws_iam_role.ec2[*].name)
+#   description = "Instance IAM role name"
+# }
 
 output "tier" {
   value       = join("", aws_elastic_beanstalk_environment.default[*].tier)
