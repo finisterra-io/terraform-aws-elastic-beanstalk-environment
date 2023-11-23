@@ -622,7 +622,7 @@ locals {
 resource "aws_elastic_beanstalk_environment" "default" {
   count = local.enabled ? 1 : 0
 
-  name                   = module.this.id
+  name                   = var.name
   application            = var.elastic_beanstalk_application_name
   description            = var.description
   tier                   = var.tier
