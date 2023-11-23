@@ -622,14 +622,14 @@ locals {
 resource "aws_elastic_beanstalk_environment" "default" {
   count = local.enabled ? 1 : 0
 
-  name                   = var.name
-  application            = var.elastic_beanstalk_application_name
-  description            = var.description
-  tier                   = var.tier
-  solution_stack_name    = var.solution_stack_name
-  wait_for_ready_timeout = var.wait_for_ready_timeout
-  version_label          = var.version_label
-  tags                   = local.tags
+  name                = var.name
+  application         = var.elastic_beanstalk_application_name
+  description         = var.description
+  tier                = var.tier
+  solution_stack_name = var.solution_stack_name
+  # wait_for_ready_timeout = var.wait_for_ready_timeout
+  version_label = var.version_label
+  tags          = local.tags
 
   dynamic "setting" {
     for_each = var.settings
